@@ -1,15 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const {
-  getUserProfile,
-  getAssignedRoom
-} = require('../controllers/userController');
+const pool = require('../db');
 const { protect } = require('../middleware/authMiddleware');
 
-// Student/Admin profile
-router.get('/profile', protect, getUserProfile);
-
-// Student's assigned room
-router.get('/assigned-room', protect, getAssignedRoom);
+router.get('/me', protect, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, name, email, role FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 module.exports = router;
