@@ -75,10 +75,18 @@ exports.updateApplicationStatus = async (req, res) => {
 
     // Increment room occupancy if accepted
     if (status === 'accepted') {
-      await pool.query(
-        'UPDATE rooms SET occupancy = occupancy + 1 WHERE id = $1',
-        [roomId]
-      );
+      // Check current room occupancy
+      const roomResult = await pool.query('SELECT occupancy, capacity FROM rooms WHERE id = $1', [roomId]);
+      const room = roomResult.rows[0];
+
+      if (room.occupancy < room.capacity) {
+        await pool.query(
+          'UPDATE rooms SET occupancy = occupancy + 1 WHERE id = $1',
+          [roomId]
+        );
+      } else {
+        return res.status(400).json({ error: 'Room is already full' });
+      }
     }
 
     res.json(result.rows[0]);
