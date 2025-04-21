@@ -1,159 +1,56 @@
+// routes/roomRoutes.js
 const express = require('express');
+const { body, validationResult } = require('express-validator');
 const router = express.Router();
-const pool = require('../db'); // Assuming you're using pg for PostgreSQL
-const { protect } = require('../middleware/authMiddleware'); // Import protect middleware
+const { protect, adminOnly } = require('../middleware/authMiddleware');
+const {
+  getAllRooms,
+  getAvailableRooms,
+  addRoom,
+  updateRoom
+} = require('../controllers/roomController');
 
-// Create Room
-router.post('/', async (req, res) => {
-  const { hostel_id, room_number, capacity, status, photo } = req.body;
+// Validation middleware
+const validate = (validations) => async (req, res, next) => {
+  await Promise.all(validations.map((v) => v.run(req)));
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  next();
+};
 
-  try {
-    const result = await pool.query(
-      'INSERT INTO rooms (hostel_id, room_number, capacity, status, photo) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [hostel_id, room_number, capacity, status || 'available', photo]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// GET all available rooms
+router.get('/', getAllRooms);
 
-// Get All Rooms
-router.get('/', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM rooms');
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// GET only rooms with occupancy < capacity
+router.get('/available', getAvailableRooms);
 
-// Get Room by ID
-router.get('/:id', async (req, res) => {
-  const { id } = req.params;
+// POST create new room (Admin only)
+router.post(
+  '/',
+  protect,
+  adminOnly,
+  validate([
+    body('hostel_id').isInt().withMessage('hostel_id must be an integer'),
+    body('room_number').notEmpty().withMessage('room_number is required'),
+    body('capacity').isInt({ gt: 0 }).withMessage('capacity must be a positive integer'),
+    body('photo').optional().isURL().withMessage('photo must be a valid URL'),
+    body('description').optional().isString().withMessage('description must be text')
+  ]),
+  addRoom
+);
 
-  try {
-    const result = await pool.query('SELECT * FROM rooms WHERE id = $1', [id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Room not found' });
-    }
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Update Room Status
-router.put('/:id/status', async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-
-  try {
-    const result = await pool.query(
-      'UPDATE rooms SET status = $1 WHERE id = $2 RETURNING *',
-      [status, id]
-    );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Room not found' });
-    }
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Delete Room
-router.delete('/:id', async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const result = await pool.query('DELETE FROM rooms WHERE id = $1 RETURNING *', [id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Room not found' });
-    }
-    res.json({ message: 'Room deleted successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Update room details
-router.patch('/:id', protect, async (req, res) => {
-  const { status, capacity } = req.body;
-  const roomId = req.params.id;
-
-  try {
-    const result = await pool.query(
-      'UPDATE rooms SET status = $1, capacity = $2 WHERE id = $3 RETURNING *',
-      [status, capacity, roomId]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Room not found' });
-    }
-
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Increase Room Occupancy
-router.patch('/:id/occupancy/increase', async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    // Get current room details
-    const roomResult = await pool.query('SELECT * FROM rooms WHERE id = $1', [id]);
-    if (roomResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Room not found' });
-    }
-
-    const room = roomResult.rows[0];
-
-    // Check if occupancy is less than capacity
-    if (room.occupancy < room.capacity) {
-      // Increase occupancy
-      const result = await pool.query(
-        'UPDATE rooms SET occupancy = occupancy + 1 WHERE id = $1 RETURNING *',
-        [id]
-      );
-      res.json(result.rows[0]);
-    } else {
-      res.status(400).json({ error: 'Room is already at full occupancy' });
-    }
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Decrease Room Occupancy
-router.patch('/:id/occupancy/decrease', async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    // Get current room details
-    const roomResult = await pool.query('SELECT * FROM rooms WHERE id = $1', [id]);
-    if (roomResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Room not found' });
-    }
-
-    const room = roomResult.rows[0];
-
-    // Check if occupancy is greater than 0
-    if (room.occupancy > 0) {
-      // Decrease occupancy
-      const result = await pool.query(
-        'UPDATE rooms SET occupancy = occupancy - 1 WHERE id = $1 RETURNING *',
-        [id]
-      );
-      res.json(result.rows[0]);
-    } else {
-      res.status(400).json({ error: 'No students to check out from this room' });
-    }
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// PUT update room details (Admin only)
+router.put(
+  '/:id',
+  protect,
+  adminOnly,
+  validate([
+    body('room_number').optional().notEmpty().withMessage('room_number cannot be empty'),
+    body('capacity').optional().isInt({ gt: 0 }).withMessage('capacity must be a positive integer'),
+    body('photo').optional().isURL().withMessage('photo must be a valid URL'),
+    body('description').optional().isString().withMessage('description must be text')
+  ]),
+  updateRoom
+);
 
 module.exports = router;
