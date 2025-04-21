@@ -157,3 +157,14 @@ exports.getAllAssignedApplications = async (req, res) => {
   }
 };
 
+// DELETE /api/applications/:id  (Admin only)
+exports.deleteApplication = async (req, res) => {
+  const { id } = req.params;
+  try {
+    // You may want to check status first, if you only allow deleting processed apps
+    await pool.query('DELETE FROM applications WHERE id = $1', [id]);
+    res.json({ message: 'Application deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

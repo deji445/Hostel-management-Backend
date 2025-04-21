@@ -8,7 +8,8 @@ const {
   getAllApplications,
   updateApplicationStatus,
   getMyRoom,
-  getAllAssignedApplications
+  getAllAssignedApplications,
+  deleteApplication
 } = require('../controllers/applicationController');
 
 // Validation middleware
@@ -51,6 +52,8 @@ router.put(
   ]),
   updateApplicationStatus
 );
+
+router.delete('/:id', protect, adminOnly, deleteApplication);
 
 module.exports = router;
 

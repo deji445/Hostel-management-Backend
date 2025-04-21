@@ -7,7 +7,8 @@ const {
   getAllRooms,
   getAvailableRooms,
   addRoom,
-  updateRoom
+  updateRoom,
+  getAllRoomsAdmin
 } = require('../controllers/roomController');
 
 // Validation middleware
@@ -23,6 +24,14 @@ router.get('/', getAllRooms);
 
 // GET only rooms with occupancy < capacity
 router.get('/available', getAvailableRooms);
+
+// Admin‑only: GET /api/rooms/all
+router.get(
+  '/all',
+  protect,
+  adminOnly,
+  getAllRoomsAdmin
+);
 
 // POST create new room (Admin only)
 router.post(

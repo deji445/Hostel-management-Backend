@@ -1,28 +1,4 @@
 const pool = require('../db');
-
-// GET /api/rooms
-exports.getAllRooms = async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT 
-        r.id, 
-        r.room_number, 
-        r.capacity, 
-        r.occupancy,
-        r.description, 
-        r.photo, 
-        r.status,
-        h.name AS hostel_name
-      FROM rooms r
-      JOIN hostels h ON r.hostel_id = h.id
-      WHERE r.status = 'available'
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
 // GET /api/rooms/available
 exports.getAvailableRooms = async (req, res) => {
   try {
@@ -76,3 +52,21 @@ exports.updateRoom = async (req, res) => {
   }
 };
 
+// GET /api/rooms
+exports.getAllRoomsAdmin = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT r.id, r.hostel_id, r.room_number, r.capacity, r.occupancy,
+             r.photo, r.status, r.description,
+             h.name AS hostel_name
+      FROM rooms r
+      JOIN hostels h ON r.hostel_id = h.id
+      ORDER BY r.id
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getAllRooms = exports.getAvailableRooms;
