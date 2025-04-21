@@ -83,18 +83,16 @@ exports.updateApplicationStatus = async (req, res) => {
       const { occupancy, capacity } = roomRes.rows[0];
 
       if (occupancy < capacity) {
-        const newRoomRes = await pool.query(
+        await pool.query(
           `UPDATE rooms
            SET occupancy = occupancy + 1,
                status    = CASE
                              WHEN occupancy + 1 >= capacity THEN 'occupied'
                              ELSE 'available'
                            END
-           WHERE id = $1
-           RETURNING occupancy, status`,
+           WHERE id = $1`,
           [roomId]
         );
-        // newRoomRes.rows[0] holds the updated occupancy/status
       } else {
         return res.status(400).json({ error: 'Room is already full' });
       }
@@ -102,18 +100,16 @@ exports.updateApplicationStatus = async (req, res) => {
 
     // 5) Handle rejection-of-an-already-accepted app: decrement occupancy & auto‑set room status
     if (status === 'rejected' && previousStatus === 'accepted') {
-      const decRes = await pool.query(
+      await pool.query(
         `UPDATE rooms
          SET occupancy = GREATEST(occupancy - 1, 0),
              status    = CASE
                            WHEN occupancy - 1 < capacity THEN 'available'
                            ELSE 'occupied'
                          END
-         WHERE id = $1
-         RETURNING occupancy, status`,
+         WHERE id = $1`,
         [roomId]
       );
-      // decRes.rows[0] holds the updated occupancy/status
     }
 
     // 6) Return the updated application
@@ -160,3 +156,4 @@ exports.getAllAssignedApplications = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
