@@ -1,5 +1,5 @@
+// controllers/applicationController.js
 const pool = require('../db');
-const { sendEmail } = require('./emailController');
 
 // Student applies for a room
 exports.applyForRoom = async (req, res) => {
@@ -12,14 +12,12 @@ exports.applyForRoom = async (req, res) => {
       [user_id, room_id, preference]
     );
 
-    const studentNotification = 'Your housing application has been successfully submitted. You will be notified once the admin reviews it.';
-    await pool.query('INSERT INTO notifications (user_id, message) VALUES ($1, $2)', [user_id, studentNotification]);
-
-    const adminEmail = process.env.EMAIL_USER;
-    const adminSubject = `New Housing Application`;
-    const adminMessage = `A new housing application has been submitted by User ID: ${user_id}. Please review it.`;
-
-    await sendEmail(adminEmail, adminSubject, adminMessage);
+    const studentNotification =
+      'Your housing application has been successfully submitted. You will be notified once the admin reviews it.';
+    await pool.query(
+      'INSERT INTO notifications (user_id, message) VALUES ($1, $2)',
+      [user_id, studentNotification]
+    );
 
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -48,48 +46,78 @@ exports.updateApplicationStatus = async (req, res) => {
   const { status } = req.body;
 
   try {
-    // Fetch application
-    const appResult = await pool.query('SELECT * FROM applications WHERE id = $1', [id]);
-    if (appResult.rows.length === 0) return res.status(404).json({ error: 'Application not found' });
+    // 1) Fetch existing application
+    const appResult = await pool.query(
+      'SELECT * FROM applications WHERE id = $1',
+      [id]
+    );
+    if (appResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
 
     const application = appResult.rows[0];
     const userId = application.user_id;
     const roomId = application.room_id;
+    const previousStatus = application.status;
 
-    // Update application status
-    const result = await pool.query(
+    // 2) Update the application’s status
+    const updateResult = await pool.query(
       'UPDATE applications SET status = $1 WHERE id = $2 RETURNING *',
       [status, id]
     );
+    const updatedApp = updateResult.rows[0];
 
-    // Notify student via dashboard
+    // 3) Notify student via dashboard
     const msg = `Your housing application has been ${status}.`;
-    await pool.query('INSERT INTO notifications (user_id, message) VALUES ($1, $2)', [userId, msg]);
+    await pool.query(
+      'INSERT INTO notifications (user_id, message) VALUES ($1, $2)',
+      [userId, msg]
+    );
 
-    // Send admin email confirmation
-    const adminEmail = process.env.EMAIL_USER;
-    const adminSubject = `Application Status Updated`;
-    const adminMessage = `Application ID ${id} has been updated to ${status}.`;
-
-    await sendEmail(adminEmail, adminSubject, adminMessage);
-
-    // Increment room occupancy if accepted
+    // 4) Handle acceptance: increment occupancy & auto‑set room status
     if (status === 'accepted') {
-      // Check current room occupancy
-      const roomResult = await pool.query('SELECT occupancy, capacity FROM rooms WHERE id = $1', [roomId]);
-      const room = roomResult.rows[0];
+      const roomRes = await pool.query(
+        'SELECT occupancy, capacity FROM rooms WHERE id = $1',
+        [roomId]
+      );
+      const { occupancy, capacity } = roomRes.rows[0];
 
-      if (room.occupancy < room.capacity) {
-        await pool.query(
-          'UPDATE rooms SET occupancy = occupancy + 1 WHERE id = $1',
+      if (occupancy < capacity) {
+        const newRoomRes = await pool.query(
+          `UPDATE rooms
+           SET occupancy = occupancy + 1,
+               status    = CASE
+                             WHEN occupancy + 1 >= capacity THEN 'occupied'
+                             ELSE 'available'
+                           END
+           WHERE id = $1
+           RETURNING occupancy, status`,
           [roomId]
         );
+        // newRoomRes.rows[0] holds the updated occupancy/status
       } else {
         return res.status(400).json({ error: 'Room is already full' });
       }
     }
 
-    res.json(result.rows[0]);
+    // 5) Handle rejection-of-an-already-accepted app: decrement occupancy & auto‑set room status
+    if (status === 'rejected' && previousStatus === 'accepted') {
+      const decRes = await pool.query(
+        `UPDATE rooms
+         SET occupancy = GREATEST(occupancy - 1, 0),
+             status    = CASE
+                           WHEN occupancy - 1 < capacity THEN 'available'
+                           ELSE 'occupied'
+                         END
+         WHERE id = $1
+         RETURNING occupancy, status`,
+        [roomId]
+      );
+      // decRes.rows[0] holds the updated occupancy/status
+    }
+
+    // 6) Return the updated application
+    res.json(updatedApp);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -98,7 +126,6 @@ exports.updateApplicationStatus = async (req, res) => {
 // Student views assigned room
 exports.getMyRoom = async (req, res) => {
   const user_id = req.user.id;
-
   try {
     const result = await pool.query(
       `SELECT a.*, r.room_number, r.capacity, r.status AS room_status 
@@ -128,7 +155,6 @@ exports.getAllAssignedApplications = async (req, res) => {
        JOIN rooms r ON a.room_id = r.id 
        WHERE a.status = 'accepted'`
     );
-
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });

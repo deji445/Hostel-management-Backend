@@ -23,7 +23,29 @@ exports.getAllRooms = async (req, res) => {
   }
 };
 
-// POST /api/rooms (Admin only)
+// GET /api/rooms/available
+exports.getAvailableRooms = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        r.id,
+        r.room_number,
+        r.capacity,
+        r.occupancy,
+        r.description,
+        r.photo,
+        h.name AS hostel_name
+      FROM rooms r
+      JOIN hostels h ON r.hostel_id = h.id
+      WHERE r.occupancy < r.capacity
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
 // POST /api/rooms (Admin only)
 exports.addRoom = async (req, res) => {
   const { hostel_id, room_number, capacity, photo, description } = req.body;

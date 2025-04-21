@@ -4,33 +4,31 @@ const { body, validationResult } = require('express-validator');
 const { register, login } = require('../controllers/authController');
 const router = express.Router();
 
-// Validation middleware
-const validate = validations => (req, res, next) => {
+const validate = (validations) => async (req, res, next) => {
+  await Promise.all(validations.map(v => v.run(req)));
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   next();
 };
 
-// POST /api/auth/register
+// Register (always creates a student)
 router.post(
   '/register',
-  [
+  validate([
     body('name').notEmpty().withMessage('Name is required'),
-    body('email').isEmail().withMessage('Valid email required'),
-    body('password').isLength({ min: 6 }).withMessage('Password min 6 chars')
-  ],
-  validate(),
+    body('email').isEmail().withMessage('Valid email is required'),
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+  ]),
   register
 );
 
-// POST /api/auth/login
+// Login
 router.post(
   '/login',
-  [
-    body('email').isEmail().withMessage('Valid email required'),
+  validate([
+    body('email').isEmail().withMessage('Valid email is required'),
     body('password').notEmpty().withMessage('Password is required')
-  ],
-  validate(),
+  ]),
   login
 );
 
