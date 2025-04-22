@@ -31,8 +31,12 @@ router.post(
   applyForRoom
 );
 
-// Student views assigned room
-router.get('/my-room', protect, getMyRoom);
+// Students fetch _their_ assigned room:
+router.get('/assigned', protect, getMyRoom); 
+
+// Student views their own assigned room
+router.get('/assigned', protect, getMyRoom); 
+
 
 // Admin views all applications
 router.get('/', protect, adminOnly, getAllApplications);

@@ -28,17 +28,24 @@ exports.applyForRoom = async (req, res) => {
 // Admin views all applications
 exports.getAllApplications = async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT a.*, u.name AS student_name, r.room_number 
-       FROM applications a 
-       JOIN users u ON a.user_id = u.id 
-       JOIN rooms r ON a.room_id = r.id`
-    );
+    const result = await pool.query(`
+      SELECT
+        a.*,
+        u.name    AS student_name,
+        r.room_number,
+        h.name    AS hostel_name
+      FROM applications a
+      JOIN users   u ON a.user_id   = u.id
+      JOIN rooms   r ON a.room_id   = r.id
+      JOIN hostels h ON r.hostel_id = h.id
+      ORDER BY a.created_at DESC
+    `);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // Admin updates application status
 exports.updateApplicationStatus = async (req, res) => {
@@ -122,14 +129,20 @@ exports.updateApplicationStatus = async (req, res) => {
 // Student views assigned room
 exports.getMyRoom = async (req, res) => {
   const user_id = req.user.id;
+
   try {
-    const result = await pool.query(
-      `SELECT a.*, r.room_number, r.capacity, r.status AS room_status 
-       FROM applications a 
-       JOIN rooms r ON a.room_id = r.id 
-       WHERE a.user_id = $1 AND a.status = 'accepted'`,
-      [user_id]
-    );
+    const result = await pool.query(`
+      SELECT 
+        r.room_number,
+        r.capacity,
+        r.status    AS room_status,
+        h.name      AS hostel_name
+      FROM applications a
+      JOIN rooms   r ON a.room_id   = r.id
+      JOIN hostels h ON r.hostel_id = h.id
+      WHERE a.user_id = $1
+        AND a.status  = 'accepted'
+    `, [user_id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'No room assigned yet.' });
@@ -144,13 +157,21 @@ exports.getMyRoom = async (req, res) => {
 // Admin views all assigned applications
 exports.getAllAssignedApplications = async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT a.*, u.name AS student_name, u.email, r.room_number, r.capacity 
-       FROM applications a 
-       JOIN users u ON a.user_id = u.id 
-       JOIN rooms r ON a.room_id = r.id 
-       WHERE a.status = 'accepted'`
-    );
+    const result = await pool.query(`
+      SELECT
+        a.id,
+        u.name    AS student_name,
+        u.email,
+        r.room_number,
+        r.capacity,
+        h.name    AS hostel_name
+      FROM applications a
+      JOIN users   u ON a.user_id   = u.id
+      JOIN rooms   r ON a.room_id   = r.id
+      JOIN hostels h ON r.hostel_id = h.id
+      WHERE a.status = 'accepted'
+      ORDER BY a.created_at DESC
+    `);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });

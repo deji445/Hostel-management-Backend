@@ -34,6 +34,8 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
 
+app.use('/api/hostels', require('./routes/hostelRoutes'));
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Not Found' });
