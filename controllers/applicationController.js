@@ -145,9 +145,9 @@ exports.getMyRoom = async (req, res) => {
     `, [user_id]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'No room assigned yet.' });
-    }
-
+        // No assignment → return empty object, 200 OK
+        return res.json({});
+      }
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });

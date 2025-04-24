@@ -14,6 +14,19 @@ exports.register = async (req, res) => {
       [name, email, hashed]
     );
     res.status(201).json({ message: 'User registered', user: result.rows[0] });
+       const user = result.rows[0];
+   // sign a token just like in login
+     const token = jwt.sign(
+      { id: user.id, role: user.role },
+       process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+     );
+    // return token + user
+     res.status(201).json({
+     message: 'User registered',
+      token,
+     user: { id: user.id, name: user.name, role: user.role }
+     });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
