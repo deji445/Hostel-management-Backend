@@ -1,8 +1,10 @@
 // routes/roomRoutes.js
 const express = require('express');
+const path    = require('path');
+const multer  = require('multer');
 const { body, validationResult } = require('express-validator');
-const router = express.Router();
-const { protect, adminOnly } = require('../middleware/authMiddleware');
+const { protect, adminOnly }    = require('../middleware/authMiddleware');
+const { deleteRoom } = require('../controllers/roomController');
 const {
   getAllRooms,
   getAvailableRooms,
@@ -11,7 +13,9 @@ const {
   getAllRoomsAdmin
 } = require('../controllers/roomController');
 
-// Validation middleware
+const router = express.Router();
+
+// ── Validation middleware ───────────────────────────────────────────────────
 const validate = (validations) => async (req, res, next) => {
   await Promise.all(validations.map((v) => v.run(req)));
   const errors = validationResult(req);
@@ -19,13 +23,22 @@ const validate = (validations) => async (req, res, next) => {
   next();
 };
 
-// GET all available rooms
-router.get('/', getAllRooms);
+// ── Multer setup for file uploads ────────────────────────────────────────────
+const storage = multer.diskStorage({
+  destination: (req, file, cb) =>
+    cb(null, path.join(__dirname, '../public/uploads')),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `room-${Date.now()}${ext}`);
+  }
+});
+const upload = multer({ storage });
 
-// GET only rooms with occupancy < capacity
+// ── Public endpoints ─────────────────────────────────────────────────────────
+router.get('/',          getAllRooms);
 router.get('/available', getAvailableRooms);
 
-// Admin‑only: GET /api/rooms/all
+// ── Admin endpoints ──────────────────────────────────────────────────────────
 router.get(
   '/all',
   protect,
@@ -33,33 +46,79 @@ router.get(
   getAllRoomsAdmin
 );
 
-// POST create new room (Admin only)
+
+// ── POST (with file) ────────────────────────────────────────────────────────────
 router.post(
-  '/',
-  protect,
-  adminOnly,
-  validate([
-    body('hostel_id').isInt().withMessage('hostel_id must be an integer'),
-    body('room_number').notEmpty().withMessage('room_number is required'),
-    body('capacity').isInt({ gt: 0 }).withMessage('capacity must be a positive integer'),
-    body('photo').optional().isURL().withMessage('photo must be a valid URL'),
-    body('description').optional().isString().withMessage('description must be text')
-  ]),
-  addRoom
+  '/', 
+  protect, 
+  adminOnly, 
+  upload.single('photo_file'),
+  async (req, res, next) => {
+    // pull the file path + form fields out of req
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'Photo file is required.' });
+      }
+      // build the body exactly like your JSON route expects:
+      const photoPath = `/uploads/${req.file.filename}`;
+      const { hostel_id, room_number, capacity, description } = req.body;
+
+      // then call your controller logic, or inline:
+      const result = await req.app
+        .get('db')
+        .query(
+          `INSERT INTO rooms
+             (hostel_id, room_number, capacity, occupancy, photo, description)
+           VALUES ($1,$2,$3,0,$4,$5)
+           RETURNING *`,
+          [hostel_id, room_number, capacity, photoPath, description]
+        );
+      res.status(201).json(result.rows[0]);
+    } catch (err) {
+      next(err);
+    }
+  }
 );
 
-// PUT update room details (Admin only)
+// ── PUT /api/rooms/:id ───────────────────────────────────────────────────────────
 router.put(
   '/:id',
   protect,
   adminOnly,
-  validate([
-    body('room_number').optional().notEmpty().withMessage('room_number cannot be empty'),
-    body('capacity').optional().isInt({ gt: 0 }).withMessage('capacity must be a positive integer'),
-    body('photo').optional().isURL().withMessage('photo must be a valid URL'),
-    body('description').optional().isString().withMessage('description must be text')
-  ]),
-  updateRoom
+  async (req, res, next) => {
+    const { room_number, capacity } = req.body;
+    try {
+      // fetch occupancy, compute status, update…
+      const { rows: [existing] } = await req.app
+        .get('db')
+        .query(
+          'SELECT occupancy FROM rooms WHERE id = $1',
+          [req.params.id]
+        );
+      const status = +capacity <= existing.occupancy ? 'full' : 'available';
+      const { rows: [updated] } = await req.app
+        .get('db')
+        .query(
+          `UPDATE rooms
+              SET room_number = $1,
+                  capacity    = $2,
+                  status      = $3
+            WHERE id = $4
+            RETURNING *`,
+          [room_number, capacity, status, req.params.id]
+        );
+      res.json(updated);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.delete(
+  '/:id',
+  protect,
+  adminOnly,
+  deleteRoom
 );
 
 module.exports = router;
