@@ -78,12 +78,13 @@ exports.getAllRoomsAdmin = async (req, res) => {
   }
 };
 
-// DELETE /api/rooms/:id
+// Admin only: delete a room
 exports.deleteRoom = async (req, res) => {
-  await pool.query('DELETE FROM rooms WHERE id = $1', [req.params.id]);
-  // return a minimal JSON so the client can do res.json() without blowing up
-  res.status(200).json({ message: 'Room deleted' });
+  try {
+    await pool.query('DELETE FROM rooms WHERE id = $1', [req.params.id]);
+    res.status(204).send();       // no content
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
-
-
 exports.getAllRooms = exports.getAvailableRooms;

@@ -4,33 +4,39 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 exports.register = async (req, res) => {
-  const { name, email, password } = req.body;                // No role here
+  const { name, email, password } = req.body;
   try {
+    // 1) hash the password
     const hashed = await bcrypt.hash(password, 10);
+
+    // 2) insert the user
     const result = await pool.query(
       `INSERT INTO users (name, email, password, role)
-       VALUES ($1, $2, $3, 'student')               -- Always student
+       VALUES ($1, $2, $3, 'student')
        RETURNING id, name, email, role`,
       [name, email, hashed]
     );
-    res.status(201).json({ message: 'User registered', user: result.rows[0] });
-       const user = result.rows[0];
-   // sign a token just like in login
-     const token = jwt.sign(
+
+    const user = result.rows[0];
+
+    // 3) sign a token
+    const token = jwt.sign(
       { id: user.id, role: user.role },
-       process.env.JWT_SECRET,
+      process.env.JWT_SECRET,
       { expiresIn: '1d' }
-     );
-    // return token + user
-     res.status(201).json({
-     message: 'User registered',
+    );
+
+    // 4) return exactly one JSON payload
+    return res.status(201).json({
+      message: 'User registered',
       token,
-     user: { id: user.id, name: user.name, role: user.role }
-     });
+      user
+    });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: err.message });
   }
 };
+
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
