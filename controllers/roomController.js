@@ -8,9 +8,10 @@ exports.getAvailableRooms = async (req, res) => {
         r.room_number,
         r.capacity,
         r.occupancy,
-        r.description,
         r.photo,
-        h.name AS hostel_name
+        r.description     AS room_description,
+        h.name            AS hostel_name,
+        h.description     AS hostel_description
       FROM rooms r
       JOIN hostels h ON r.hostel_id = h.id
       WHERE r.occupancy < r.capacity
