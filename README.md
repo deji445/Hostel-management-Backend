@@ -39,7 +39,7 @@
 - **Allotted Students**  
   - Admin panel “Allotted Students” shows who’s in which room  
 
----
+-----
 
 ----🛠 How to Operate-----
 
@@ -74,9 +74,10 @@ Edit Room: click “Edit” → modal popup → change number or capacity
 
 Delete Room: click “Delete” (only if no conflicting occupancy)
 
+--------
 
 
------How to run locally-----
+###---How to run locally-----
 
 ##---how to start the backend----
 
@@ -93,7 +94,7 @@ you can check .env for the url
 3-to start the server- npm run dev  
 
 
-##---how to start the frontend----
+###---how to start the frontend----
 1-clone and install //in a separate terminal where the frontend is: 
 npm install -g http-server      # if you don’t already have it
 http-server . -p 8080
@@ -104,7 +105,9 @@ const API_BASE = 'http://localhost:5000/api';
 after running: http-server . -p 8080 you would see to servers select the second one 
 ( http://127.0.0.1:8080)
 
-and everything should work, hopefully
+and everything should work, hopefully.
+
+---------------------------
 
 
 
