@@ -1,0 +1,8 @@
+# dependencies
+node_modules/
+# env files
+.env
+# build output (if you have one)
+dist/
+# uploads, logs, etc
+public/uploads/
