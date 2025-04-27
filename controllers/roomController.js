@@ -83,7 +83,7 @@ exports.getAllRoomsAdmin = async (req, res) => {
 exports.deleteRoom = async (req, res) => {
   try {
     await pool.query('DELETE FROM rooms WHERE id = $1', [req.params.id]);
-    res.status(204).send();       // no content
+    res.status(204).send();       
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

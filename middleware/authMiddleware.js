@@ -10,7 +10,7 @@ exports.protect = (req, res, next) => {
     console.log('JWT_SECRET:', process.env.JWT_SECRET);
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('Decoded Token:', decoded);
-    req.user = decoded; // now you can access req.user.id, req.user.role
+    req.user = decoded; 
     next();
   } catch (err) {
     res.status(401).json({ error: 'Token invalid' });

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 
-// Test DB connection route
+// Test DB connection route this is to test or ensure that the database connection is working properly
 router.get('/test-db', async (req, res) => {
   try {
     // Simple query to check connection

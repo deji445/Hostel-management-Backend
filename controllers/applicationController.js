@@ -1,7 +1,6 @@
-// controllers/applicationController.js
 const pool = require('../db');
 
-// Student applies for a room
+// this allows a Student to apply for a room
 exports.applyForRoom = async (req, res) => {
   const { room_id, preference } = req.body;
   const user_id = req.user.id;
@@ -25,7 +24,7 @@ exports.applyForRoom = async (req, res) => {
   }
 };
 
-// Admin views all applications
+// Admin can views all applications
 exports.getAllApplications = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -126,7 +125,7 @@ exports.updateApplicationStatus = async (req, res) => {
   }
 };
 
-// Student views assigned room
+// 7) Student views assigned room
 exports.getMyRoom = async (req, res) => {
   const user_id = req.user.id;
 
@@ -154,7 +153,7 @@ exports.getMyRoom = async (req, res) => {
   }
 };
 
-// Admin views all assigned applications
+// 8) Admin views all assigned applications
 exports.getAllAssignedApplications = async (req, res) => {
   try {
     const result = await pool.query(`

@@ -1,4 +1,3 @@
-// controllers/hostelController.js
 const pool = require('../db');
 
 // GET /api/hostels

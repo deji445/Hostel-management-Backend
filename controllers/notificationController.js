@@ -1,4 +1,4 @@
-// controllers/notificationController.js
+
 const pool = require('../db');
 
 // GET /api/notifications

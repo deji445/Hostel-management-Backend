@@ -2,7 +2,7 @@
 const express = require('express');
 const cors    = require('cors');
 const fs   = require('fs');
-const path    = require('path');           // ← add this
+const path    = require('path');         
 require('dotenv').config();
 const pool    = require('./db');
 
@@ -19,11 +19,9 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 
 const app = express();
 
-// ── Middleware ──────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
 
-// ── Serve uploaded images ───────────────────────────────────────────────────
 app.use(
   '/uploads',
   express.static(path.join(__dirname, 'public/uploads'))
@@ -35,7 +33,7 @@ app.use(
   express.static(path.join(__dirname, 'public', 'images'))
 )
 
-// ── Test DB connection ───────────────────────────────────────────────────────
+// ── Test DB connection 
 app.get('/api/test-db', async (req, res) => {
   try {
     const result = await pool.query('SELECT NOW()');
@@ -45,7 +43,7 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
-// ── Mount API routes ────────────────────────────────────────────────────────
+// ── Mount API routes 
 app.use('/api/auth',         authRoutes);
 app.use('/api/rooms',        roomRoutes);
 app.use('/api/applications', applicationRoutes);
@@ -54,12 +52,12 @@ app.use('/api/notifications',notificationRoutes);
 app.use('/api/hostels',      hostelRoutes);
 app.use(express.static(path.join(__dirname, 'public', 'client-dist')));
 
-// ── 404 handler ─────────────────────────────────────────────────────────────
+// ── 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Not Found' });
 });
 
-// ── Global error handler ────────────────────────────────────────────────────
+// ── Global error handler 
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res
@@ -67,6 +65,6 @@ app.use((err, req, res, next) => {
     .json({ error: err.message || 'Internal Server Error' });
 });
 
-// ── Start server ─────────────────────────────────────────────────────────────
+// ── Start server 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
