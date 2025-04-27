@@ -1,0 +1,127 @@
+CREATE TABLE public.applications (
+    id integer NOT NULL,
+    user_id integer,
+    room_id integer,
+    preference text,
+    status text DEFAULT 'pending'::text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE public.applications OWNER TO hostel_management2;
+
+CREATE SEQUENCE public.applications_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.applications_id_seq OWNER TO hostel_management2;
+ALTER SEQUENCE public.applications_id_seq OWNED BY public.applications.id;
+
+CREATE TABLE public.hostels (
+    id integer NOT NULL,
+    name text NOT NULL,
+    description text
+);
+
+ALTER TABLE public.hostels OWNER TO hostel_management2;
+
+CREATE SEQUENCE public.hostels_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.hostels_id_seq OWNER TO hostel_management2;
+ALTER SEQUENCE public.hostels_id_seq OWNED BY public.hostels.id;
+
+CREATE TABLE public.notifications (
+    id integer NOT NULL,
+    user_id integer,
+    message text NOT NULL,
+    read boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE public.notifications OWNER TO hostel_management2;
+
+CREATE SEQUENCE public.notifications_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.notifications_id_seq OWNER TO hostel_management2;
+ALTER SEQUENCE public.notifications_id_seq OWNED BY public.notifications.id;
+
+CREATE TABLE public.rooms (
+    id integer NOT NULL,
+    hostel_id integer,
+    room_number text NOT NULL,
+    capacity integer,
+    occupancy integer DEFAULT 0,
+    photo text,
+    status text DEFAULT 'available'::text,
+    description text
+);
+
+ALTER TABLE public.rooms OWNER TO hostel_management2;
+
+CREATE SEQUENCE public.rooms_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.rooms_id_seq OWNER TO hostel_management2;
+ALTER SEQUENCE public.rooms_id_seq OWNED BY public.rooms.id;
+
+CREATE TABLE public.users (
+    id integer NOT NULL,
+    name text NOT NULL,
+    email text NOT NULL,
+    password text NOT NULL,
+    role text DEFAULT 'student'::text
+);
+
+ALTER TABLE public.users OWNER TO hostel_management2;
+
+CREATE SEQUENCE public.users_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.users_id_seq OWNER TO hostel_management2;
+ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
+
+-- set defaults
+ALTER TABLE ONLY public.applications ALTER COLUMN id SET DEFAULT nextval('public.applications_id_seq'::regclass);
+ALTER TABLE ONLY public.hostels      ALTER COLUMN id SET DEFAULT nextval('public.hostels_id_seq'::regclass);
+ALTER TABLE ONLY public.notifications ALTER COLUMN id SET DEFAULT nextval('public.notifications_id_seq'::regclass);
+ALTER TABLE ONLY public.rooms         ALTER COLUMN id SET DEFAULT nextval('public.rooms_id_seq'::regclass);
+ALTER TABLE ONLY public.users         ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+
+-- primary keys & constraints
+ALTER TABLE ONLY public.applications  ADD CONSTRAINT applications_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.hostels       ADD CONSTRAINT hostels_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.notifications ADD CONSTRAINT notifications_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.rooms         ADD CONSTRAINT rooms_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.users         ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.users         ADD CONSTRAINT unique_email UNIQUE (email);
+
+-- foreign keys
+ALTER TABLE ONLY public.applications  ADD CONSTRAINT applications_room_id_fkey FOREIGN KEY (room_id) REFERENCES public.rooms(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.applications  ADD CONSTRAINT applications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+ALTER TABLE ONLY public.notifications ADD CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+ALTER TABLE ONLY public.rooms         ADD CONSTRAINT rooms_hostel_id_fkey FOREIGN KEY (hostel_id) REFERENCES public.hostels(id);

@@ -1,7 +1,7 @@
 // routes/authRoutes.js
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { register, login } = require('../controllers/authController');
+const { register, login,registerAdmin } = require('../controllers/authController');
 const router = express.Router();
 
 const validate = (validations) => async (req, res, next) => {
@@ -21,6 +21,8 @@ router.post(
   ]),
   register
 );
+
+router.post('/register-admin', registerAdmin);
 
 // Login
 router.post(

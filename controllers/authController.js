@@ -62,3 +62,22 @@ exports.login = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.registerAdmin = async (req, res) => {
+  const { name, email, password, code } = req.body;
+  if (code !== process.env.ADMIN_REG_CODE) {
+    return res.status(403).json({ error: 'Invalid admin code' });
+  }
+  // hash & insert exactly like student, but role = 'admin'
+  const hashed = await bcrypt.hash(password, 10);
+  const result = await pool.query(
+    `INSERT INTO users (name,email,password,role)
+     VALUES($1,$2,$3,'admin') RETURNING id,name,email,role`,
+    [name,email,hashed]
+  );
+  // sign token, return user + token just like login
+  const user = result.rows[0];
+  const token = jwt.sign({ id:user.id,role:user.role }, process.env.JWT_SECRET);
+  res.status(201).json({ message:'Admin created', token, user });
+};
+
